@@ -1,0 +1,18 @@
+---
+- name: Install common packages
+  yum:
+    name: "{{ packages }}"
+    state: present
+
+- name: Install common Redhat/Fedora packages
+  yum:
+    name: "{{ redhat }}"
+    state: present
+  when: (ansible_os_family == "RedHat" and ansible_distribution_major_version == "7") or
+        (ansible_os_family == "RedHat" and ansible_distribution_major_version >= "29")
+
+- name: Install common Redhat/Fedora packages
+  yum:
+    name: "{{ debian }}"
+    state: present
+  when: ansible_os_family == "Debian"

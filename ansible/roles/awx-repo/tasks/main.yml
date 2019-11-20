@@ -1,0 +1,34 @@
+---
+- name: AWX Permissions Reset
+  file:
+    dest: "{{ awx_path }}"
+    owner: "{{ awx_user['user'] }}"
+    group: "{{ awx_user['group'] }}"
+    mode: u=rwX,g=rX,o=rX
+    recurse: yes
+
+- name: AWX Repo Checkout/Update
+  git:
+    repo: https://github.com/ansible/awx.git
+    dest: "{{ awx_path }}"
+    version: "devel"
+    force: yes
+
+- name: AWX Locate Latest Branch
+  shell: |
+    set -o pipefail
+    git rev-list -n 1 `sudo git tag |grep {{ awx_branch }}|tail -n 1`
+  args:
+    chdir: "{{ awx_path }}"
+  register: latest_tag
+
+- name: AWX Switch to Tag
+  git:
+    repo: https://github.com/ansible/awx.git
+    dest: "{{ awx_path }}"
+    version: "{{ latest_tag.stdout }}"
+    force: yes
+
+##
+## todo: add additional users via ACL when acl var is defined
+##

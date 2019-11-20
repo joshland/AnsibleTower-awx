@@ -1,0 +1,10 @@
+---
+# Variables for this exercise
+fqdn: site.example.conf
+certbotpath: /usr/local/certbot
+aws_access_key_id: DDDDDDDDDDDDDDDD
+aws_secret_access_key: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+nginxuser: httpd
+nginxgroup: httpd
+
+ansible_python_interpreter=/usr/bin/python3

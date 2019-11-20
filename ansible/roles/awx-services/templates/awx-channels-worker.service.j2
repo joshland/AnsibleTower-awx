@@ -1,0 +1,17 @@
+[Unit]
+Description=AWX channels worker service
+After=syslog.target network.target
+PartOf=awx.service
+After=awx.service
+
+[Service]
+User={{ awx_user['user'] }}
+Group={{ awx_user['group'] }}
+EnvironmentFile=-/etc/sysconfig/awx
+ExecStart={{ awx_user['bindir'] }}/awx-manage runworker --only-channels 'websocket.*'
+Restart=on-failure
+RestartSec=2s
+
+[Install]
+WantedBy=awx.service
+

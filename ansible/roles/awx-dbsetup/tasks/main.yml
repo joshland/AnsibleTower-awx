@@ -1,0 +1,42 @@
+---
+- name: PostgreSQL Init Check
+  stat:
+    path: /var/lib/pgsql/data/PG_VERSION
+  register: stat_result
+
+- name: PostgreSQL Initialize
+  shell: |
+    set -o pipefail
+    su postgres -c "initdb -D /var/lib/pgsql/data"
+  when: not stat_result.stat.exists
+  register: pgsetup
+
+- name: PostgreSQL Config
+  systemd:
+    state:   started
+    name:    postgresql
+    enabled: yes
+
+- name: pgUser - Check for Existnce
+  shell: |
+    set -o pipefail
+    su postgres -c "psql -c \"select usename from pg_catalog.pg_user where usename='{{ awx_user['user'] }}';\" "
+  register: pguser_check
+
+- name: pgDatabase - Check For Existnce
+  shell: |
+    set -o pipefail
+    su postgres -c "psql -c \"SELECT datname FROM pg_database WHERE datname = 'awx' ;\" "
+  register: pgdb_check
+
+- name: pgUser Setup
+  shell: |
+    set -o pipefail
+    su postgres -c "createuser -S {{ awx_user['user'] }}"
+  when: pguser_check.stdout.find('1 row') == -1
+
+- name: pgDB Setup
+  shell: |
+    set -o pipefail
+    su postgres -c "createdb -O {{ awx_user['user'] }} awx"
+  when: pgdb_check.stdout.find('1 row') == -1

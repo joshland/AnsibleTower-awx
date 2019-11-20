@@ -1,0 +1,127 @@
+---
+#- name: Install AWX os packages
+#  yum:
+#    name: "{{ item }}"
+#    state: present
+#  loop: "{{ awx_packages }}"
+
+- name: Install AWX os packages
+  yum:
+    name: "{{ awx_packages }}"
+    state: present
+
+- name: Install Development Tools
+  yum:
+    name: "@Development Tools"
+    state: present
+
+- name: Create a login user
+  user:
+    name: "{{ awx_user['user'] }}"
+    password: '???'
+    groups: # Empty by default, here we give it some groups
+      - wheel
+    state: present
+    shell: /bin/bash       # Defaults to /bin/bash
+    system: no             # Defaults to no
+    createhome: yes        # Defaults to yes
+    home: "{{ awx_user['home'] }}"  # Defaults to /home/<username>
+
+- name: AWX Check Ansible Virtual Env
+  stat:
+    path: /srv/ansible/bin
+  register: awx_stat
+
+- name: AWX Check Virtual Env
+  shell: |
+    set -o pipefail
+    ls {{ awx_user['bindir'] }}
+  args:
+    chdir: "{{ awx_user['home'] }}"
+  when: awx_stat.stat.exists
+  register: awx_venv
+
+- name: AWX Env Setup
+  shell: |
+    set -o pipefail
+    python3 -m venv {{ awx_user['home'] }}
+  when: (not awx_stat.stat.exists) or
+        ((awx_stat.stat.exists) and
+        ('pip' not in awx_venv.stdout_lines) or
+        ('python' not in awx_venv.stdout_lines))
+
+- name: AWX Env - install requirements
+  pip:
+    virtualenv: "{{ awx_user['home'] }}"
+    chdir: "{{ awx_path }}"
+    name: pip
+
+- name: Set USR_T Se_Context to /srv/ansible
+  sefcontext:
+    target: "{{ awx_user['home'] }}(/.*)?"
+    setype: usr_t
+    state: present
+
+- name: Apply new SELinux file context to filesystem
+  command: restorecon -irv "{{ awx_user['home'] }}"
+
+- name: Repo Ansible AWX
+  template:
+    src: ansible-awx.repo.j2
+    dest: /etc/yum.repos.d/ansible-awx.repo
+    setype: system_conf_t
+    owner: root
+    group: root
+    mode: 0644
+  when: (ansible_os_family == "RedHat" and ansible_distribution_major_version == "7") or
+        (ansible_os_family == "RedHat" and ansible_distribution_major_version == "6")
+
+- name: Repo add repo {{ item }}
+  template:
+    src: "{{ item }}.j2"
+    dest: /etc/yum.repos.d/"{{ item }}"
+    setype: system_conf_t
+    owner: root
+    group: root
+    mode: 0644
+  loop: "{{ repos }}"
+
+- name: Deploy RebbitMQ Server
+  yum:
+    name: rabbitmq-server
+    state: present
+
+## todo: these are broken due to library errors
+##
+# - name: Permit Nginx to listen on 8050
+#   seport:
+#     ports:
+#       - 8050-8052
+#       - 443
+#       - 80
+#     proto: tcp
+#     setype: http_port_t
+#     state: present
+#     reload: yes
+
+# - name: Set httpd_can_network_connect flag on and keep it persistent across reboots
+#   seboolean:
+#     name: httpd_can_network_connect
+#     state: yes
+#     persistent: yes
+
+- name: Firewall open service ports
+  firewalld:
+    service: "{{ item }}"
+    permanent: yes
+    state: enabled
+  loop: "{{ firewallports }}"
+
+- name: Ansible Home Perms (1/2)
+  file: dest="{{ awx_user['home'] }}" owner={{ awx_user['user'] }} group={{ awx_user['group'] }} mode=u=rwX,g=rX,o=rX recurse=yes
+
+- name: Ansible Home ACLs (2/2)
+  acl: path="{{ awx_user['home'] }}" entry="user:{{ item }}:rwX" state=present recursive=yes
+  when: admin_users is defined
+  loop: "{{ admin_users }}"
+

@@ -1,0 +1,4 @@
+Admin Credentials
+User: {{ admin['user'] }}
+Email: {{ admin['email'] }}
+Password: {{ awx_user_password.stdout }}

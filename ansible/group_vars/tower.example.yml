@@ -1,0 +1,78 @@
+---
+hostname: tower.example.net
+awx_branch: 9.0
+awx_path:  /srv/ansible/awx
+
+admin:
+  user: admin
+  email: admin@example.net
+
+web:
+  ### ClearLinux
+  #configpath: /usr/share/nginx/conf
+  ### Fedora
+  configpath: /etc/nginx
+  certificate_name: fullchain.pem
+  key_name: privkey.pem
+  user: nginx
+  group: nginx
+
+awx_user:
+  user: ansible
+  group: wheel
+  uid:   770
+  gid:   770
+  home: /srv/ansible
+  bindir: /srv/ansible/bin
+  pgdb: awx
+  pguser: awx
+
+admin_users:
+  - eis
+
+awx_packages:
+  - libcurl-devel
+  - libffi-devel
+  - libpq-devel
+  - libtool-ltdl-devel
+  - libxslt-devel
+  - memcached
+  - openldap-devel
+  - postgresql
+  - postgresql-plpython3
+  - postgresql-server
+  - postgresql-devel
+  - python3-devel
+  - python3-psycopg2
+  - sshpass
+  - subversion
+  - xmlsec1-devel
+  - xmlsec1-openssl-devel
+
+firewallports:
+  - https
+  - http
+  - ssh
+
+seports:
+  - '8050'
+  - '8051'
+  - '8052'
+  - '443'
+  - '80'
+
+services:
+  - awx-cbreceiver.service
+  - awx-channels-worker.service
+  - awx-daphne.service
+  - awx-dispatcher.service
+  - awx-web.service
+  - awx.service
+
+repos:
+  - rabbitmq-erlang.repo
+  - rabbitmq.repo
+
+deploymentfolders:
+  - /var/lib/awx
+  - /usr/share/awx

@@ -1,0 +1,50 @@
+---
+- name: Check Fact Path
+  set_fact: certbotpath="/usr/local/certbot"
+  when: certbotpath is undefined
+
+- name: Check Config Folder
+  set_fact: configfolder="/root/.aws"
+  when: configfolder is undefined
+
+- name: Set Certbot Vars
+  set_fact: domains={{ certbotdomains | join(' -d ') }}
+  when: domains is undefined and certbotdomains is defined
+
+- name: Setup Certbot
+  pip:
+    virtualenv: "{{ certbotpath }}"
+    virtualenv_python: python3
+
+- name: create certbot config dir
+  file: path="{{ configfolder }}" state=directory mode='0700'
+
+- name: Deploy AWS Config
+  template: src=aws-config
+            dest="{{ configfolder }}"/config
+            mode='0600'
+
+- name: Upgrade PIP
+  pip:
+    name: pip
+    extra_args: --upgrade
+    virtualenv: "{{ certbotpath }}"
+
+- name: Deploy Certbot
+  pip:
+    name: certbot
+    virtualenv: "{{ certbotpath }}"
+
+- name: Deploy Certbot / R53
+  pip:
+    name: certbot-route53
+    virtualenv: "{{ certbotpath }}"
+
+- name: Deploy Certbot / NGINX
+  pip:
+    name: certbot-nginx
+    virtualenv: "{{ certbotpath }}"
+
+- name: Execute Certbox
+  command:
+    name: "{{ certbotpath }}/bin/certbot --dns-route53  --dns-route53-propagation-seconds 30 -d {{ domains }} certonly"

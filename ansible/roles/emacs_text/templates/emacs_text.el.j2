@@ -1,0 +1,35 @@
+(mapc 'load
+(directory-files "/usr/share/emacs/site-lisp/yaml-mode/" t "^[^#].*el$"))
+(add-to-list 'load-path "/usr/share/emacs/site-lisp/markdown-mode")
+(add-to-list 'load-path "/usr/share/emacs/site-lisp/mmm-mode")
+(add-to-list 'load-path "/usr/share/emacs/site-lisp/mmm-jijna2")
+;;(add-to-list 'load-path "/usr/share/emacs/site-lisp/python-mode")
+
+(put 'downcase-region 'disabled nil)
+;; Only spaces, no tabs
+(setq indent-tabs-mode nil)
+
+;; Always end a file with a newline
+(setq require-final-newline nil)
+
+;; Don't know which of these might work
+(setq-default tab-width 2)
+(setq-default python-indent 2)
+(setq-default py-indent-offset 2)
+
+;; Python Hook
+(add-hook 'python-mode-hook
+(function (lambda ()
+(setq indent-tabs-mode nil
+tab-width 2))))
+
+;;Begin YAML
+(add-to-list 'auto-mode-alist '("\\.sls\\'" . yaml-mode))
+
+;;(require 'salt-mode)
+(add-to-list 'auto-mode-alist '("\\.yml$" . yaml-mode))
+
+(add-hook 'yaml-mode-hook
+'(lambda ()
+(define-key yaml-mode-map "\C-m" 'newline-and-indent)))
+;;End YAML

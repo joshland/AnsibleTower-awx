@@ -1,0 +1,16 @@
+  
+bin/
+include/
+init/
+lib/
+lib64
+pyvenv.cfg
+share/
+*~
+.vscode
+
+cache
+output
+__pycache__
+.doit.db
+

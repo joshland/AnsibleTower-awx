@@ -1,0 +1,3 @@
+nginxconfigpath: /usr/share/nginx/conf
+certificate_name: fullchain.pem
+key_name: privkey.pem

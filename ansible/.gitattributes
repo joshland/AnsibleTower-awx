@@ -1,0 +1,6 @@
+*.txt -crlf
+*.yml -crlf
+*.md -crlf
+*.j2 -crlf
+*.service -crlf
+

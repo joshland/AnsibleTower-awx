@@ -1,0 +1,16 @@
+---
+# Variables for this exercise
+packages:
+  - lsscsi
+  - hdparm
+  - tmux
+  - virt-what
+
+redhat:
+  - augeas
+  - vim-enhanced
+  - emacs-nox
+
+debian:
+  - emacs-nox
+  - vim-nox

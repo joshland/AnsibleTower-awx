@@ -1,0 +1,105 @@
+- name: Install Emacs on Redhat Systems.
+  yum:
+    name: emacs-nox
+    state: present
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
+
+- name: Install Emacs on Debian Systems.
+  yum:
+    name: emacs24-nox
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: EMACS - SanityTomorrow
+  git:
+    repo: https://github.com/purcell/color-theme-sanityinc-tomorrow.git
+    dest: /usr/share/emacs/site-lisp/themes/color-theme-sanity-tomorrow
+    version: master
+
+- name: SetMode - SanityTomorrow
+  file:
+    dest:  /usr/share/emacs/site-lisp/themes/color-theme-sanity-tomorrow
+    owner: root
+    group: root
+    mode:  u=rwX,g=rX,o=rX
+    recurse: yes
+
+- name: EMACS - TwilightBright
+  git:
+    repo: https://github.com/jimeh/twilight-bright-theme.el.git
+    dest: /usr/share/emacs/site-lisp/themes/twilight-bright-theme
+    version: master
+
+- name: SetMode - TwilightBright
+  file:
+    dest: /usr/share/emacs/site-lisp/themes/twilight-bright-theme
+    owner: root
+    group: root
+    mode:  u=rwX,g=rX,o=rX
+    recurse: yes
+
+- name: EMACS - YamlMode
+  git:
+    repo: https://github.com/yoshiki/yaml-mode.git
+    dest: /usr/share/emacs/site-lisp/yaml-mode
+    version: master
+
+- name: SetMode - YamlMode
+  file:
+    dest: /usr/share/emacs/site-lisp/yaml-mode
+    owner: root
+    group: root
+    mode:  u=rwX,g=rX,o=rX
+    recurse: yes
+
+- name: EMACS - MarkdownMode
+  git:
+    repo: https://github.com/jrblevin/markdown-mode.git
+    dest: /usr/share/emacs/site-lisp/markdown-mode
+    version: master
+
+- name: SetMode - MarkdownMode
+  file:
+    dest: /usr/share/emacs/site-lisp/markdown-mode
+    owner: root
+    group: root
+    mode:  u=rwX,g=rX,o=rX
+    recurse: yes
+
+- name: EMACS - MMM Mode
+  git:
+    repo: https://github.com/purcell/mmm-mode.git
+    dest: /usr/share/emacs/site-lisp/mmm-mode
+    version: master
+
+- name: SetMode - MMM Mode
+  file:
+    dest: /usr/share/emacs/site-lisp/mmm-mode
+    owner: root
+    group: root
+    mode:  u=rwX,g=rX,o=rX
+    recurse: yes
+
+- name: EMACS - MMM Jinja2
+  git:
+    repo: https://github.com/glynnforrest/mmm-jinja2.git
+    dest: /usr/share/emacs/site-lisp/mmm-jinja2
+    version: master
+
+- name: SetMode - MMM Jinja2
+  file:
+    dest: /usr/share/emacs/site-lisp/mmm-jinja2
+    owner: root
+    group: root
+    mode:  u=rwX,g=rX,o=rX
+    recurse: yes
+
+- name: Deploy Themes
+  template: src=Fedora.el.j2
+            dest=/usr/share/emacs/site-lisp/site-start.d/themes.el
+            mode='0644'
+
+- name: EMACS Text Mode
+  template: src=emacs_text.el.j2
+            dest=/usr/share/emacs/site-lisp/site-start.d/emacs_text.el
+            mode='0644'

@@ -1,0 +1,132 @@
+---
+- name: AWX Check Virtual Env
+  shell: |
+    set -o pipefail
+    ls {{ awx_user['home'] }}/bin
+  args:
+    chdir: "{{ awx_path }}"
+  register: awx_venv
+
+- name: AWX Env - Get Latest PIP
+  pip:
+    virtualenv: "{{ awx_user['home'] }}"
+    chdir: "{{ awx_path }}"
+    name: pip
+    state: latest
+  when: ('ansible' not in awx_venv.stdout_lines)
+
+- name: AWX Env - install Ansible
+  pip:
+    virtualenv: "{{ awx_user['home'] }}"
+    chdir: "{{ awx_path }}"
+    name: ansible
+  when: ('ansible' not in awx_venv.stdout_lines)
+
+- name: AWX Env - install requirements
+  pip:
+    virtualenv: "{{ awx_user['home'] }}"
+    chdir: "{{ awx_path }}"
+    requirements: "{{ awx_path }}/requirements/requirements.txt"
+
+- name: AWX Env - devel install requirements
+  pip:
+    virtualenv: "{{ awx_user['home'] }}"
+    chdir: "{{ awx_path }}"
+    requirements: "{{ awx_path }}/requirements/requirements_dev.txt"
+
+- name: AWX Env - install requirements
+  pip:
+    virtualenv: "{{ awx_user['home'] }}"
+    chdir: "{{ awx_path }}"
+    requirements: "{{ awx_path }}/requirements/requirements_git.txt"
+
+- name: AWX Env - install Daphne
+  pip:
+    virtualenv: "{{ awx_user['home'] }}"
+    chdir: "{{ awx_path }}"
+    name: daphne
+  when: ('daphne' not in awx_venv.stdout_lines)
+
+- name: AWX Env - install Uwsgi
+  pip:
+    virtualenv: "{{ awx_user['home'] }}"
+    chdir: "{{ awx_path }}"
+    name: uwsgi
+  when: ('uwsgi' not in awx_venv.stdout_lines)
+
+- name: AWX Install
+  pip:
+    virtualenv: "{{ awx_user['home'] }}"
+    chdir: "{{ awx_path }}"
+    name: .
+
+- name: AWX Install CLI
+  pip:
+    virtualenv: "{{ awx_user['home'] }}"
+    chdir: "{{ awx_path }}"
+    name: ansible-tower-cli
+
+- name: Reset Ansible Home Perms
+  file: dest="{{ awx_user['home'] }}" owner={{ awx_user['user'] }} group={{ awx_user['group'] }} mode=u=rwX,g=rX,o=rX recurse=yes
+
+- name: AWX Initialize Database
+  shell: |
+    set -o pipefail
+    su -l {{ awx_user['user'] }} -c "source {{ awx_user['bindir'] }}/activate;{{ awx_user['bindir'] }}/awx-manage migrate"
+  args:
+    chdir: "{{ awx_path }}"
+  register: awx_dbinit
+
+- name: AWX Create User Password
+  shell: |
+    set -o pipefail
+    dd if=/dev/urandom count=8 bs=2 2> /dev/null | xxd -ps
+  args:
+    chdir: "{{ awx_path }}"
+  register: awx_user_password
+
+- name: AWX Admin Cred Save
+  template:
+    src: AdminCreds.txt
+    dest: "{{ awx_user['home'] }}/AdminCredentials.txt"
+    mode: '0644'
+    owner: root
+    group: root
+    setype: system_conf_t
+
+- name: Get AWX Users
+  shell: |
+    set -o pipefail
+    su postgres -c 'psql -d awx -A -t -c "select username from auth_user;"'
+  args:
+    chdir: "{{ awx_path }}"
+  register: awx_db_users
+
+
+- name: AWX User Creation
+  shell: |
+    set -o pipefail
+    echo "from django.contrib.auth.models import User;User.objects.create_superuser('{{ admin['user'] }}', '{{ admin['email'] }}', '{{ awx_user_password.stdout }}')" | sudo su -l {{ awx_user['user'] }} -c "{{ awx_user['bindir'] }}/awx-manage shell"
+  args:
+    chdir: "{{ awx_path }}"
+  register: awx_usercreation
+  when: not "{{ admin['user'] }}" in awx_db_users.stdout_lines
+
+- name: AWX Data Preload
+  shell: |
+    set -o pipefail
+    su -l {{ awx_user['user'] }} -c "{{ awx_user['home'] }}/bin/awx-manage create_preload_data"
+  args:
+    chdir: "{{ awx_path }}"
+  register: awx_preload
+  when: testdata
+
+- name: AWX Hostname
+  shell: |
+    set -o pipefail
+    su -l {{ awx_user['user'] }} -c "{{ awx_user['home'] }}/bin/awx-manage provision_instance --hostname={{ hostname }}"
+    su -l {{ awx_user['user'] }} -c "{{ awx_user['home'] }}/bin/awx-manage register_queue --queuename=tower --hostnames={{ hostname }}"
+  args:
+    chdir: "{{ awx_path }}"
+  register: awx_preload
+  when: testdata
