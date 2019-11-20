@@ -1,22 +1,23 @@
 #!/bin/bash
 
 function fail(){
-    printf "$*"
-    exit
+    printf "$*\n\n"
+    printf "Error:  abnormal termination\n"
+   exit
 }
-yum -y install policycoreutils-python
+sudo yum -y install policycoreutils-python
 rpm -q policycoreutils-python || fail "Failed to install required packages"
-semanage port -a -t http_port_t -p tcp 8050
-semanage port -a -t http_port_t -p tcp 8051
-semanage port -a -t http_port_t -p tcp 8052
-setsebool -P httpd_can_network_connect 1
+sudo semanage port -a -t http_port_t -p tcp 8050
+sudo semanage port -a -t http_port_t -p tcp 8051
+sudo semanage port -a -t http_port_t -p tcp 8052
+sudo setsebool -P httpd_can_network_connect 1
 
-systemctl stop firewalld
-systemctl disable firewalld
+sudo systemctl stop firewalld
+sudo systemctl disable firewalld
 
 
-yum -y install epel-release wget || fail "EPEL Required"
-yum -y install centos-release-scl centos-release-scl-rh || fail "Failed to install Software Collections"
+sudo yum -y install epel-release wget || fail "EPEL Required"
+sudo yum -y install centos-release-scl centos-release-scl-rh || fail "Failed to install Software Collections"
 
 #### AWX Repository:
 
@@ -51,32 +52,32 @@ enabled=1" |sudo tee /etc/yum.repos.d/rabbitmq-erlang.repo > /dev/null || fail "
 #### Installation:
 
 echo "01- Install RabbitMQ and Git:"
-yum -y install rabbitmq-server rh-git29
-systemctl enable rabbitmq-server && systemctl start rabbitmq-server
+sudo yum -y install rabbitmq-server rh-git29
+sudo systemctl enable rabbitmq-server && systemctl start rabbitmq-server
 
 echo "02- Install PostgreSQL, Initialize db && create awx db and user:"
-yum install -y rh-postgresql10
-scl enable rh-postgresql10 "postgresql-setup initdb"
-systemctl start rh-postgresql10-postgresql.service && systemctl enable rh-postgresql10-postgresql.service
-scl enable rh-postgresql10 "su postgres -c \"createuser -S awx\""
-scl enable rh-postgresql10 "su postgres -c \"createdb -O awx awx\""
+sudo yum install -y rh-postgresql10
+sudo scl enable rh-postgresql10 "postgresql-setup initdb"
+sudo systemctl start rh-postgresql10-postgresql.service && systemctl enable rh-postgresql10-postgresql.service
+sudo scl enable rh-postgresql10 "su postgres -c \"createuser -S awx\""
+sudo scl enable rh-postgresql10 "su postgres -c \"createdb -O awx awx\""
 
 echo "03- Install memcached:"
-yum install -y memcached
-systemctl enable memcached && systemctl start memcached
+sudo yum install -y memcached
+sudo systemctl enable memcached && systemctl start memcached
 
 echo "04- Install & configure NGINX:"
-yum -y install nginx
-cp -p /etc/nginx/nginx.conf{,.org}
-wget -O /etc/nginx/nginx.conf https://raw.githubusercontent.com/faudeltn/AnsibleTower-awx/master/ansible-awx-install/nginx.conf
-systemctl enable nginx && systemctl start nginx
+sudo yum -y install nginx
+sudo cp -p /etc/nginx/nginx.conf{,.org}
+sudo wget -O /etc/nginx/nginx.conf https://raw.githubusercontent.com/faudeltn/AnsibleTower-awx/master/ansible-awx-install/nginx.conf
+sudo systemctl enable nginx && systemctl start nginx
 
 echo "05- Install Python and dependcies:"
-yum -y install rh-python36
-yum -y install --disablerepo='*' --enablerepo='mrmeee-ansible-awx, base' -x *-debuginfo rh-python36*
+sudo yum -y install rh-python36
+sudo yum -y install --disablerepo='*' --enablerepo='mrmeee-ansible-awx, base' -x *-debuginfo rh-python36*
 
 echo "06- Install AWX-RPM:"
-yum install -y ansible-awx
+sudo yum install -y ansible-awx
 
 echo "07- Initialize AWX:"
 sudo -u awx scl enable rh-python36 rh-postgresql10 rh-git29 "GIT_PYTHON_REFRESH=quiet awx-manage migrate"
@@ -86,5 +87,5 @@ sudo -u awx scl enable rh-python36 rh-postgresql10 rh-git29 "GIT_PYTHON_REFRESH=
 sudo -u awx scl enable rh-python36 rh-postgresql10 rh-git29 "GIT_PYTHON_REFRESH=quiet awx-manage register_queue --queuename=tower --hostnames=$(hostname)"
 
 echo "08- Enable and Start AWX:"
-systemctl enable awx
-systemctl start awx
+sudo systemctl enable awx
+sudo systemctl start awx
