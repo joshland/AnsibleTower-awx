@@ -102,7 +102,6 @@
     chdir: "{{ awx_path }}"
   register: awx_db_users
 
-
 - name: AWX User Creation
   shell: |
     set -o pipefail

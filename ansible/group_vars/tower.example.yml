@@ -17,6 +17,14 @@ web:
   user: nginx
   group: nginx
 
+certbot:
+  hostname: tower.example.net
+  pyvenv: /usr/local/certbot
+  aws_access_key_id: XXXXXXXXXXXXXXXXXX
+  aws_secret_access_key: YYYYYYYYYYYYYYYYYYY
+  aliases:
+    - alias.example.net
+
 awx_user:
   user: ansible
   group: wheel

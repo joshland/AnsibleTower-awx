@@ -1,50 +1,81 @@
 ---
-- name: Check Fact Path
-  set_fact: certbotpath="/usr/local/certbot"
-  when: certbotpath is undefined
-
-- name: Check Config Folder
+- name: Defaults - AWS Config
   set_fact: configfolder="/root/.aws"
-  when: configfolder is undefined
 
-- name: Set Certbot Vars
-  set_fact: domains={{ certbotdomains | join(' -d ') }}
-  when: domains is undefined and certbotdomains is defined
+- name: Defaults - Virtual Environment Path
+  set_fact: venvpath="/usr/local/certbot"
 
-- name: Setup Certbot
+- name: Defaults - Aliases
+  set_fact: aliases=[ {{ certbot['hostname'] }} ]
+
+- name: Config Config
+  set_fact: configfolder={{ certbot['configfolder'] }}
+  when: "'configfolder' in certbot.key"
+
+- name: Virtual Env Path
+  set_fact: venvpath={{ certbot['pyvenv'] }}
+  when: "'pyvenv' in certbot.key"
+
+- name: Alias Prepartion
+  set_fact: aliases={{ aliases + certbot['aliases'] }}
+  when: "'aliases' in certbot.key"
+
+- name: Domain Aliases
+  set_fact: domains={{ aliases | join(' -d ') }}
+
+- name: AWS Access Key
+  set_fact: aws_access_key_id={{ certbot['aws_access_key_id'] }}
+
+- name: AWS Secret Access Key
+  set_fact: aws_secret_access_key={{ certbot['aws_secret_access_key'] }}
+
+- name: Check Deployment
+  shell: |
+    set -o pipefail
+    ls bin/
+  args:
+    chdir: "{{ venvpath }}"
+  register: venv_check
+
+- name: Deploy Venv
   pip:
     virtualenv: "{{ certbotpath }}"
     virtualenv_python: python3
+  when: not 'pip' in venv_check.stdout_lines
 
-- name: create certbot config dir
+- name: Create Config Folder
   file: path="{{ configfolder }}" state=directory mode='0700'
 
-- name: Deploy AWS Config
-  template: src=aws-config
-            dest="{{ configfolder }}"/config
-            mode='0600'
+- name: Write AWS Config
+  template:
+    src: aws-config
+    dest: "{{ configfolder }}/config"
+    mode: '0600'
 
 - name: Upgrade PIP
   pip:
     name: pip
-    extra_args: --upgrade
+    state: latest
     virtualenv: "{{ certbotpath }}"
 
 - name: Deploy Certbot
   pip:
     name: certbot
+    state: latest
     virtualenv: "{{ certbotpath }}"
 
 - name: Deploy Certbot / R53
   pip:
     name: certbot-route53
+    state: latest
     virtualenv: "{{ certbotpath }}"
 
 - name: Deploy Certbot / NGINX
   pip:
     name: certbot-nginx
+    state: latest
     virtualenv: "{{ certbotpath }}"
 
 - name: Execute Certbox
   command:
-    name: "{{ certbotpath }}/bin/certbot --dns-route53  --dns-route53-propagation-seconds 30 -d {{ domains }} certonly"
+    name: "{{ certbotpath }}/bin/certbot --dryrun --dns-route53  --dns-route53-propagation-seconds 30 -d {{ domains }} certonly"

@@ -3,25 +3,51 @@
   yum: name=nginx state=present
 
 - name: ensure nginx dir config
-  file: path="{{ web['configpath'] }}" state=directory mode='0755' owner='{{ web['user'] }}' group='{{ web['group'] }}'
+  file:
+    path:  "{{ web['configpath'] }}"
+    state: directory
+    mode:  '0755'
+    owner: "{{ web['user'] }}"
+    group: "{{ web['group'] }}"
 
 - name: ensure nginx dir config
-  file: path='{{ web['configpath'] }}/conf.d' state=directory mode='0755' owner='{{ web['user'] }}' group='{{ web['group'] }}'
+  file:
+    path: "{{ web['configpath'] }}/conf.d"
+    state: directory
+    mode: "0755"
+    owner: "{{ web['user'] }}"
+    group: "{{ web['group'] }}"
 
 - name: nginx ssl config deployment
-  template: src=ssl.conf dest='{{ web['configpath'] }}/ssl.conf' owner='{{ web['user'] }}' group='{{ web['group'] }}'
+  template:
+    src: ssl.conf
+    dest: "{{ web['configpath'] }}/ssl.conf"
+    owner: "{{ web['user'] }}"
+    group: "{{ web['group'] }}"
   notify: restart nginx
 
 - name: nginx mattermost config
-  template: src=default.conf dest='{{ web['configpath'] }}/conf.d/default.conf' owner='{{ web['user'] }}' group='{{ web['group'] }}'
+  template:
+    src: default.conf
+    dest: "{{ web['configpath'] }}/conf.d/default.conf"
+    owner: "{{ web['user'] }}"
+    group: "{{ web['group'] }}"
   notify: restart nginx
 
 - name: nginx default http->https redirect
-  template: src=http_conf.conf dest='{{ web['configpath'] }}/conf.d/default_https.conf' owner='{{ web['user'] }}' group='{{ web['group'] }}'
+  template:
+    src: http_conf.conf
+    dest: "{{ web['configpath'] }}/conf.d/default_https.conf"
+    owner: "{{ web['user'] }}"
+    group: "{{ web['group'] }}"
   notify: restart nginx
 
 - name: nginx mattermost config
-  template: src=nginx.conf dest="{{ web['configpath'] }}/nginx.conf" owner='{{ web['user'] }}' group='{{ web['group'] }}'
+  template:
+    src: nginx.conf
+    dest: "{{ web['configpath'] }}/nginx.conf"
+    owner: "{{ web['user'] }}"
+    group: "{{ web['group'] }}"
   notify: restart nginx
 
 - name: gather certificates
@@ -42,26 +68,50 @@
 
 #### Fix Live 
 - name: ssl cert acl - live
-  acl: path=/etc/letsencrypt/live entry="user:httpd:r-x" state=present
+  acl:
+    path: /etc/letsencrypt/live
+    entry: "user:httpd:r-x"
+    state: present
 
 - name: ssl cert acl - fqdn
-  acl: path=/etc/letsencrypt/live/{{ fqdn }} entry="user:httpd:r-x" state=present
+  acl:
+    path: /etc/letsencrypt/live/{{ fqdn }}
+    entry: "user:httpd:r-x"
+    state: present
 
 - name: ssl cert acl - live cert
-  acl: path="/etc/letsencrypt/live/{{ fqdn }}/{{ certificate_name }}" entry="user:httpd:r--" state=present
+  acl:
+    path: "/etc/letsencrypt/live/{{ fqdn }}/{{ certificate_name }}"
+    entry: "user:httpd:r--"
+    state: present
 
 - name: ssl cert acl - live key
-  acl: path="/etc/letsencrypt/live/{{ fqdn }}/{{ key_name }}" entry="user:httpd:r--" state=present
+  acl:
+    path: "/etc/letsencrypt/live/{{ fqdn }}/{{ key_name }}"
+    entry: "user:httpd:r--"
+    state: present
 
 #### Actual Archive
 - name: ssl cert acl - live
-  acl: path=/etc/letsencrypt/archive entry="user:httpd:r-x" state=present
+  acl:
+    path: /etc/letsencrypt/archive
+    entry: "user:httpd:r-x"
+    state: present
 
 - name: ssl cert acl - fqdn
-  acl: path=/etc/letsencrypt/archive/{{ fqdn }} entry="user:httpd:r-x" state=present
+  acl:
+    path: /etc/letsencrypt/archive/{{ fqdn }}
+    entry: "user:httpd:r-x"
+    state: present
 
 - name: ssl cert acl - archive cert
-  acl: path="{{ cert_path.stdout }}" entry="user:httpd:r--" state=present
+  acl:
+    path: "{{ cert_path.stdout }}"
+    entry: "user:httpd:r--"
+    state: present
 
 - name: ssl cert acl - archive key
-  acl: path="{{ key_path.stdout }}" entry="user:httpd:r--" state=present
+  acl:
+    path: "{{ key_path.stdout }}"
+    entry: "user:httpd:r--"
+    state: present
