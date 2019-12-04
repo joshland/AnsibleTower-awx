@@ -22,6 +22,8 @@ certbot:
   pyvenv: /usr/local/certbot
   aws_access_key_id: XXXXXXXXXXXXXXXXXX
   aws_secret_access_key: YYYYYYYYYYYYYYYYYYY
+  acme_email: user@example.net
+  #tert: True    ## if this is defined, it will test.
   aliases:
     - alias.example.net
 

@@ -1,0 +1,107 @@
+---
+- name: Defaults - AWS Config
+  set_fact: configfolder="/root/.aws"
+
+- name: Defaults - Virtual Environment Path
+  set_fact: venvpath="/usr/local/certbot"
+
+- name: Defaults - Aliases
+  set_fact:
+    aliases: [ "{{ certbot['hostname'] }}", ]
+
+- name: Config Config
+  set_fact: configfolder={{ certbot['configfolder'] }}
+  when: certbot.configfolder is defined
+
+- name: Virtual Env Path
+  set_fact: venvpath={{ certbot['pyvenv'] }}
+  when: certbot.pyvenv is defined
+
+- name: Alias Prepartion
+  set_fact:
+    aliases: "{{ aliases + certbot['aliases'] }}"
+  when: certbot.aliases is defined
+
+- name: Domain Aliases
+  set_fact: domains={{ aliases | join(' -d ') }}
+
+- name: AWS Access Key
+  set_fact: aws_access_key_id={{ certbot['aws_access_key_id'] }}
+
+- name: AWS Secret Access Key
+  set_fact: aws_secret_access_key={{ certbot['aws_secret_access_key'] }}
+
+- name: Check Deployment
+  shell: |
+    set -o pipefail
+    if [ -e "{{ venvpath }}/bin" ]; then
+        ls {{ venvpath }}/bin
+    fi
+  register: venv_check
+
+- name: Create Virtual Environment
+  shell: |
+    set -o pipefail
+    /usr/bin/python3 -m venv "{{ venvpath }}"
+  register: venv_check
+  when: not 'pip' in venv_check.stdout_lines
+
+- name: Create Config Folder
+  file: path="{{ configfolder }}" state=directory mode='0700'
+
+- name: Write AWS Config
+  template:
+    src: aws-config
+    dest: "{{ configfolder }}/config"
+    mode: '0600'
+
+- name: Upgrade PIP
+  pip:
+    name: pip
+    state: latest
+    virtualenv: "{{ venvpath }}"
+
+- name: Deploy Certbot
+  pip:
+    name: certbot
+    state: latest
+    virtualenv: "{{ venvpath }}"
+
+- name: Deploy Certbot / R53
+  pip:
+    name: certbot-route53
+    state: latest
+    virtualenv: "{{ venvpath }}"
+
+- name: Deploy Certbot / NGINX
+  pip:
+    name: certbot-nginx
+    state: latest
+    virtualenv: "{{ venvpath }}"
+
+- name: Cron Script
+  template:
+    src: certbot-update.sh
+    dest: /etc/cron.weekly/certbot-update.sh
+    mode: '0750'
+  when: cerbot.nocron is not defined
+
+- name: NGINX Restart Script
+  template:
+    src: nginx_restart.sh
+    dest: "{{ venvpath }}/certbot-update.sh"
+    mode: '0750'
+  when: cerbot.nocron is not defined
+
+- name: Test Execute Certbox
+  shell: |
+    set -o pipefail
+    echo 'Y' | {{ venvpath }}/bin/certbot -n --test-cert --dns-route53 --agree-tos -m {{ certbot['acme_email'] }} --dns-route53-propagation-seconds 30 -d {{ domains }} certonly
+  when: certbot.test is defined and certbot.test
+
+- name: Execute Certbox
+  shell: |
+    set -o pipefail
+    echo 'Y' | {{ venvpath }}/bin/certbot -n --dns-route53 --agree-tos -m {{ certbot['acme_email'] }} --dns-route53-propagation-seconds 30 -d {{ domains }} certonly
+  when: (certbot.test is not defined) or
+        (not certbot.test)
