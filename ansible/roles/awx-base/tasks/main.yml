@@ -50,12 +50,6 @@
         ('pip' not in awx_venv.stdout_lines) or
         ('python' not in awx_venv.stdout_lines))
 
-- name: AWX Env - install requirements
-  pip:
-    virtualenv: "{{ awx_user['home'] }}"
-    chdir: "{{ awx_path }}"
-    name: pip
-
 - name: Set USR_T Se_Context to /srv/ansible
   sefcontext:
     target: "{{ awx_user['home'] }}(/.*)?"
@@ -91,37 +85,46 @@
     name: rabbitmq-server
     state: present
 
-## todo: these are broken due to library errors
-##
-# - name: Permit Nginx to listen on 8050
-#   seport:
-#     ports:
-#       - 8050-8052
-#       - 443
-#       - 80
-#     proto: tcp
-#     setype: http_port_t
-#     state: present
-#     reload: yes
+- name: Permit Nginx to listen on 8050
+  seport:
+    ports:
+      - 8050-8052
+      - 443
+      - 80
+    proto: tcp
+    setype: http_port_t
+    state: present
+    reload: yes
+  when: (awx_selinux is defined and awx_selinux)
 
-# - name: Set httpd_can_network_connect flag on and keep it persistent across reboots
-#   seboolean:
-#     name: httpd_can_network_connect
-#     state: yes
-#     persistent: yes
+- name: Set httpd_can_network_connect flag on and keep it persistent across reboots
+  seboolean:
+    name: httpd_can_network_connect
+    state: yes
+    persistent: yes
+  when: (awx_selinux is defined and awx_selinux)
 
 - name: Firewall open service ports
   firewalld:
+    zone: FedoraServer
     service: "{{ item }}"
     permanent: yes
     state: enabled
   loop: "{{ firewallports }}"
 
+- name: Start memcached
+  systemd:
+    state:   started
+    name:    memcached
+    masked:  no
+    enabled: yes
+    daemon_reload: yes
+
 - name: Ansible Home Perms (1/2)
-  file: dest="{{ awx_user['home'] }}" owner={{ awx_user['user'] }} group={{ awx_user['group'] }} mode=u=rwX,g=rX,o=rX recurse=yes
+  file: dest="{{ awx_user.home }}" owner={{ awx_user.user }} group={{ awx_user.group }} mode=u=rwX,g=rX,o=rX recurse=yes
 
 - name: Ansible Home ACLs (2/2)
-  acl: path="{{ awx_user['home'] }}" entry="user:{{ item }}:rwX" state=present recursive=yes
+  acl: path="{{ awx_user.home }}" entry="user:{{ item }}:rwX" state=present recursive=yes
   when: admin_users is defined
   loop: "{{ admin_users }}"
 

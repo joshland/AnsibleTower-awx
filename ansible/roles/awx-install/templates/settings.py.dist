@@ -7,7 +7,12 @@ def get_secret():
         return open('/etc/tower/SECRET_KEY', 'rb').read().strip()
     return os.getenv("SECRET_KEY", "privateawx")
 
-HOSTNAME = platform.node()
+def get_uuid():
+    if os.path.exists("/etc/tower/NODE_UUID"):
+        return open('/etc/tower/NODE_UUID', 'rb').read().strip()
+    return os.getenv("NODE_UUID", '00000000-0000-0000-0000-000000000000')
+
+HOSTNAME = {{ hostname }}
 
 ADMINS = ()
 
@@ -32,7 +37,7 @@ BASE_VENV_PATH = '/srv/ansible/'
 CUSTOM_VENV_PATHS = ['/var/lib/awx/venv']
 
 CLUSTER_HOST_ID = HOSTNAME
-SYSTEM_UUID = '00000000-0000-0000-0000-000000000000'
+SYSTEM_UUID = get_uuid()
 #CELERY_QUEUES += (Queue(CLUSTER_HOST_ID, Exchange(CLUSTER_HOST_ID), routing_key=CLUSTER_HOST_ID),)
 #CELERY_ROUTES['awx.main.tasks.cluster_node_heartbeat'] = {'queue': CLUSTER_HOST_ID, 'routing_key': CLUSTER_HOST_ID}
 #CELERY_ROUTES['awx.main.tasks.purge_old_stdout_files'] = {'queue': CLUSTER_HOST_ID, 'routing_key': CLUSTER_HOST_ID}

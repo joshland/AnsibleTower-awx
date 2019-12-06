@@ -1,5 +1,5 @@
 ---
-- name: AWX Permissions Reset
+- name: Reset Working Folder Permissions
   file:
     dest: "{{ awx_path }}"
     owner: "{{ awx_user['user'] }}"
@@ -7,14 +7,14 @@
     mode: u=rwX,g=rX,o=rX
     recurse: yes
 
-- name: AWX Repo Checkout/Update
+- name: Git Repo Checkout/Update
   git:
     repo: https://github.com/ansible/awx.git
     dest: "{{ awx_path }}"
     version: "devel"
     force: yes
 
-- name: AWX Locate Latest Branch
+- name: Locate Latest Tagged Release
   shell: |
     set -o pipefail
     git rev-list -n 1 `sudo git tag |grep {{ awx_branch }}|tail -n 1`
@@ -22,13 +22,17 @@
     chdir: "{{ awx_path }}"
   register: latest_tag
 
-- name: AWX Switch to Tag
+- name: Switch to Tagged Release
   git:
     repo: https://github.com/ansible/awx.git
     dest: "{{ awx_path }}"
     version: "{{ latest_tag.stdout }}"
     force: yes
 
-##
-## todo: add additional users via ACL when acl var is defined
-##
+# - name: AWX Copy Static Files
+#   shell: |
+#     set -o pipefail
+#     cp -ar ui/client/assets/logo-header.svg /opt/awx/static/assets/
+#     cp -ar ui/client/assets/logo-login.svg /opt/awx/static/assets/
+#   args:
+#     chdir: "{{ awx_path }}"

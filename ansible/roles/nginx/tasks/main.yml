@@ -26,7 +26,23 @@
     group: "{{ nginx['group'] }}"
   notify: restart nginx
 
-- name: nginx mattermost config
+- name: nginx base config deployment
+  template:
+    src: nginx.conf
+    dest: "{{ nginx['configpath'] }}/nginx.conf"
+    owner: "{{ nginx['user'] }}"
+    group: "{{ nginx['group'] }}"
+  notify: restart nginx
+
+- name: nginx default http redir to https
+  template:
+    src: default_ssl.conf
+    dest: "{{ nginx['configpath'] }}/conf.d/default_ssl.conf"
+    owner: "{{ nginx['user'] }}"
+    group: "{{ nginx['group'] }}"
+  notify: restart nginx
+
+- name: nginx site config
   template:
     src: default.conf
     dest: "{{ nginx['configpath'] }}/conf.d/default.conf"
@@ -116,3 +132,15 @@
     path: "{{ key_path.stdout }}"
     entry: "user:{{ nginx.user }}:r--"
     state: present
+
+- name: open firewall to https
+  firewalld:
+    service: https
+    permanent: yes
+    state: enabled
+
+- name: open firewall to http
+  firewalld:
+    service: http
+    permanent: yes
+    state: enabled

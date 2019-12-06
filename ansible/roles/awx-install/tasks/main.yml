@@ -1,83 +1,169 @@
 ---
-- name: AWX Check Virtual Env
+- name: Check Virtual Env
   shell: |
     set -o pipefail
-    ls {{ awx_user['home'] }}/bin
+    ls {{ awx_user.home }}/bin
   args:
     chdir: "{{ awx_path }}"
   register: awx_venv
 
-- name: AWX Env - Get Latest PIP
-  pip:
-    virtualenv: "{{ awx_user['home'] }}"
+- name: Check Tower Settings
+  shell: |
+    set -o pipefail
+    ls /etc/tower
+  args:
     chdir: "{{ awx_path }}"
-    name: pip
-    state: latest
-  when: ('ansible' not in awx_venv.stdout_lines)
+  register: awx_etc_tower
 
-- name: AWX Env - install Ansible
+- name: Env - upgrade pip
   pip:
+    name: pip==19.3.1
+    chdir: "{{ awx_path }}"
     virtualenv: "{{ awx_user['home'] }}"
+
+- name: Env - install Ansible
+  pip:
+    virtualenv: "{{ awx_user.home }}"
     chdir: "{{ awx_path }}"
     name: ansible
   when: ('ansible' not in awx_venv.stdout_lines)
 
-- name: AWX Env - install requirements
-  pip:
-    virtualenv: "{{ awx_user['home'] }}"
-    chdir: "{{ awx_path }}"
-    requirements: "{{ awx_path }}/requirements/requirements.txt"
+- name: Ensure nginx dir config
+  file:
+    path:  "/var/log/tower"
+    state: directory
+    mode:  '0755'
+    owner: "{{ awx_user.user }}"
+    group: "{{ awx_user.group }}"
 
-- name: AWX Env - devel install requirements
-  pip:
-    virtualenv: "{{ awx_user['home'] }}"
-    chdir: "{{ awx_path }}"
-    requirements: "{{ awx_path }}/requirements/requirements_dev.txt"
+- name: Make tmp folder
+  file:
+    path:  "{{ awx_user.home }}/tmp"
+    state: directory
+    mode:  '0750'
+    owner: "{{ awx_user.user }}"
+    group: "{{ awx_user.group }}"
 
-- name: AWX Env - install requirements
-  pip:
-    virtualenv: "{{ awx_user['home'] }}"
+- name: Locate Latest Branch
+  shell: |
+    set -o pipefail
+    git rev-list -n 1 `sudo git tag |grep {{ awx_branch }}|tail -n 1`
+  args:
     chdir: "{{ awx_path }}"
-    requirements: "{{ awx_path }}/requirements/requirements_git.txt"
+  register: latest_tag
 
-- name: AWX Env - install Daphne
-  pip:
-    virtualenv: "{{ awx_user['home'] }}"
+- name: Locate Get Latest Tag
+  shell: |
+    set -o pipefail
+    git tag |grep {{ awx_branch }}|tail -n 1
+  args:
     chdir: "{{ awx_path }}"
-    name: daphne
-  when: ('daphne' not in awx_venv.stdout_lines)
+  register: tag_version
 
-- name: AWX Env - install Uwsgi
-  pip:
-    virtualenv: "{{ awx_user['home'] }}"
-    chdir: "{{ awx_path }}"
-    name: uwsgi
-  when: ('uwsgi' not in awx_venv.stdout_lines)
+- name: Compile requirements (remove pip)
+  shell: |
+    set -o pipefail
+    TARGET="{{ awx_user.home }}/tmp/req"
+    REQHOME="{{ awx_user.home }}/tmp/awx-{{ tag_version.stdout }}/requirements"
+    cat ${REQHOME}/requirements.txt         | grep -v '^pip' > ${TARGET}0.txt
+    cat ${REQHOME}/requirements_git.txt     | grep -v '^pip' > ${TARGET}1.txt
+    cat ${REQHOME}/requirements_ansible.txt | grep -v '^pip' > ${TARGET}2.txt
+    echo "${TARGET}0.txt"
+    echo "${TARGET}1.txt"
+    echo "${TARGET}2.txt"
+  register: requirements
 
-- name: AWX Install
+- name: Env - install requirements
   pip:
-    virtualenv: "{{ awx_user['home'] }}"
+    virtualenv:   "{{ awx_user.home }}"
+    chdir:        "{{ awx_path }}"
+    requirements: "{{ item }}"
+  loop: "{{ requirements.stdout_lines }}"
+
+- name: Env - upgrade pip
+  pip:
+    name: pip==19.3.1
     chdir: "{{ awx_path }}"
+    virtualenv: "{{ awx_user['home'] }}"
+
+- name: sdist Build
+  shell: |
+    set -o pipefail
+    source /srv/ansible/bin/activate
+    export TMP="{{ awx_user.home }}/tmp"
+    export TEMP="{{ awx_user.home }}/tmp"
+    export NPMTMP="{{ awx_user.home }}/tmp"
+    NPM_PACKAGES="{{ awx_user.home }}/.npm-packages"
+    mkdir -p "$NPM_PACKAGES"
+    cd "{{ awx_path }}"
+    chown -R {{ awx_user.user }}:{{ awx_user.group }} .
+    su {{ awx_user.user }} -c "make sdist"
+    chown -R {{ awx_user.user }}:{{ awx_user.group }} .
+    chmod 755 dist/
+    chmod 644 dist/*
+  args:
+    chdir: "{{ awx_path }}"
+
+- name: Untar sdist
+  unarchive:
+    src: "{{ awx_path }}/dist/awx-{{ tag_version.stdout }}.tar.gz"
+    dest: "{{ awx_user.home }}/tmp"
+    remote_src: yes
+
+- name: Untar sdist
+  unarchive:
+    src: "https://github.com/ansible/awx-logos/archive/master.tar.gz"
+    dest: "{{ awx_user.home }}/tmp/"
+    remote_src: yes
+
+- name: /var/lib/awx ACLs
+  file:
+    dest: "{{ awx_user.home }}/tmp"
+    owner: "{{ awx_user.user }}"
+    group: "{{ awx_user.group }}"
+    mode: "u=rwX,g=rX,o=rX"
+    recurse: yes
+
+- name: Copy Logo Assets
+  shell: |
+    set -o pipefail
+    SOURCE="{{ awx_user.home }}/tmp/awx-logos-master/awx/ui/client/assets"
+    DEST="{{ awx_user.home }}/tmp/awx-{{ tag_version.stdout }}/awx/ui/static/assets"
+    chown -R {{ awx_user.user }}:{{ awx_user.group }} ${SOURCE} ${DEST}
+    cp -f ${SOURCE}/logo-header.svg ${DEST}/logo-header.svg
+    cp -f ${SOURCE}/logo-login.svg ${DEST}/logo-login.svg
+    cp -f ${SOURCE}/variables.less ${DEST}/variables.less
+    cp -f ${SOURCE}/favicon.ico ${DEST}/favicon.ico
+
+- name: Remove Dev
+  file:
+    name: "{{ awx_user.home }}/tmp/awx-{{ tag_version.stdout }}/awx/devonly.py"
+    state: absent
+
+- name: Install
+  pip:
+    virtualenv: "{{ awx_user.home }}"
+    chdir: "{{ awx_user.home }}/tmp/awx-{{ tag_version.stdout }}"
     name: .
 
-- name: AWX Install CLI
+- name: Install CLI
   pip:
-    virtualenv: "{{ awx_user['home'] }}"
-    chdir: "{{ awx_path }}"
+    virtualenv: "{{ awx_user.home }}"
+    chdir: "{{ awx_user.home }}"
     name: ansible-tower-cli
 
 - name: Reset Ansible Home Perms
-  file: dest="{{ awx_user['home'] }}" owner={{ awx_user['user'] }} group={{ awx_user['group'] }} mode=u=rwX,g=rX,o=rX recurse=yes
+  file: dest="{{ awx_user.home }}" owner={{ awx_user.user }} group={{ awx_user.group }} mode=u=rwX,g=rX,o=rX recurse=yes
 
-- name: AWX Initialize Database
+- name: Initialize Database
   shell: |
     set -o pipefail
-    su -l {{ awx_user['user'] }} -c "source {{ awx_user['bindir'] }}/activate;{{ awx_user['bindir'] }}/awx-manage migrate"
+    su {{ awx_user.user }} -c "source {{ awx_user.bindir }}/activate;{{ awx_user.bindir }}/awx-manage migrate"
   args:
     chdir: "{{ awx_path }}"
   register: awx_dbinit
 
-- name: AWX Create User Password
+- name: Create User Password
   shell: |
     set -o pipefail
     dd if=/dev/urandom count=8 bs=2 2> /dev/null | xxd -ps
@@ -85,10 +171,67 @@
     chdir: "{{ awx_path }}"
   register: awx_user_password
 
-- name: AWX Admin Cred Save
+- name: Admin Cred Save
   template:
     src: AdminCreds.txt
-    dest: "{{ awx_user['home'] }}/AdminCredentials.txt"
+    dest: "{{ awx_user.home }}/AdminCredentials.txt"
+    mode: '0644'
+    owner: root
+    group: root
+    setype: system_conf_t
+
+- name: Create Node UUID
+  shell: |
+    set -o pipefail
+    python3 -c "import uuid;print(uuid.uuid1())"
+  args:
+    chdir: "{{ awx_path }}"
+  register: node_uuid
+  when: ('NODE_UUID' not in awx_etc_tower.stdout_lines)
+
+- name: Save Node UUID
+  template:
+    src: NODE_UUID.j2
+    dest: /etc/tower/NODE_UUID
+    mode: '0600'
+    owner: ansible
+    group: root
+    setype: system_conf_t
+  when: ('NODE_UUID' not in awx_etc_tower.stdout_lines)
+
+- name: Create AWX Secret
+  shell: |
+    set -o pipefail
+    dd if=/dev/urandom count=8 bs=3 2> /dev/null | xxd -ps
+  args:
+    chdir: "{{ awx_path }}"
+  register: awx_site_secret
+  when: ('SECRET_KEY' not in awx_etc_tower.stdout_lines)
+
+- name: Save Site Secret
+  template:
+    src: SECRET_KEY.j2
+    dest: /etc/tower/SECRET_KEY
+    mode: '0600'
+    owner: ansible
+    group: root
+    setype: system_conf_t
+  when: ('SECRET_KEY' not in awx_etc_tower.stdout_lines)
+
+- name: AWX Tower Settings
+  template:
+    src: settings.py.dist
+    dest: /etc/tower/settings.py
+    mode: '0644'
+    owner: root
+    group: wheel
+    setype: system_conf_t
+  when: ('settings.py' not in awx_etc_tower.stdout_lines)
+
+- name: AWX Service Environment
+  template:
+    src: awx-environment.j2
+    dest: /etc/sysconfig/awx
     mode: '0644'
     owner: root
     group: root
@@ -102,30 +245,73 @@
     chdir: "{{ awx_path }}"
   register: awx_db_users
 
-- name: AWX User Creation
+- name: App User Creation
   shell: |
     set -o pipefail
-    echo "from django.contrib.auth.models import User;User.objects.create_superuser('{{ admin['user'] }}', '{{ admin['email'] }}', '{{ awx_user_password.stdout }}')" | sudo su -l {{ awx_user['user'] }} -c "{{ awx_user['bindir'] }}/awx-manage shell"
+    echo "from django.contrib.auth.models import User;User.objects.create_superuser('{{ admin['user'] }}', '{{ admin['email'] }}', '{{ awx_user_password.stdout }}')" | sudo su {{ awx_user.user }} -c "{{ awx_user.bindir }}/awx-manage shell"
   args:
     chdir: "{{ awx_path }}"
   register: awx_usercreation
-  when: not "{{ admin['user'] }}" in awx_db_users.stdout_lines
+  when: not admin.user in awx_db_users.stdout_lines
 
-- name: AWX Data Preload
+- name: Data Preload
   shell: |
     set -o pipefail
-    su -l {{ awx_user['user'] }} -c "{{ awx_user['home'] }}/bin/awx-manage create_preload_data"
+    su {{ awx_user.user }} -c "{{ awx_user.home }}/bin/awx-manage create_preload_data"
   args:
     chdir: "{{ awx_path }}"
   register: awx_preload
   when: testdata
+
+- name: Hostname
+  shell: |
+    set -o pipefail
+    su {{ awx_user.user }} -c "{{ awx_user.home }}/bin/awx-manage provision_instance --hostname={{ hostname }}"
+    su {{ awx_user.user }} -c "{{ awx_user.home }}/bin/awx-manage register_queue --queuename=tower --hostnames={{ hostname }}"
+  args:
+    chdir: "{{ awx_path }}"
+  register: awx_preload
+  when: testdata
+
+- name: /var/lib/awx ACLs
+  file:
+    dest: "/var/lib/awx"
+    owner: "{{ awx_user.user }}"
+    group: "{{ nginx.group }}"
+    mode: "u=rwX,g=rX,o=rX"
+    recurse: no
+
+- name: AWX Deploy Static Files
+  shell: |
+    set -o pipefail
+    su {{ awx_user.user }} -c "{{ awx_user.home }}/bin/awx-manage collectstatic --noinput --clear"
+  args:
+    chdir: "{{ awx_path }}"
+  register: awx_staticdeploy
+
+- name: /var/lib/awx ACLs
+  file:
+    dest: "/var/lib/awx"
+    owner: "{{ awx_user.user }}"
+    group: "{{ nginx.group }}"
+    mode: "u=rwX,g=rX,o=rX"
+    recurse: yes
+
+#httpd_sys_content_t
+- name: Set SELinux context to /var/lib/awx
+  sefcontext:
+    target: "/var/lib/awx(/.*)?"
+    setype: httpd_sys_content_t
+    state: present
+
+- name: Apply new SELinux file context to filesystem
+  command: restorecon -irv /var/lib/awx
 
 - name: AWX Hostname
   shell: |
     set -o pipefail
-    su -l {{ awx_user['user'] }} -c "{{ awx_user['home'] }}/bin/awx-manage provision_instance --hostname={{ hostname }}"
-    su -l {{ awx_user['user'] }} -c "{{ awx_user['home'] }}/bin/awx-manage register_queue --queuename=tower --hostnames={{ hostname }}"
-  args:
-    chdir: "{{ awx_path }}"
-  register: awx_preload
-  when: testdata
+    echo {{ tag_version.stdout }} > /var/lib/awx/.tower_version
+    echo "tag_version {{ tag_version.stdout }}" >> /var/lib/awx/.tower_versiona
+    echo "tag_version '{{ tag_version }}'" >> /var/lib/awx/.tower_versiona
+    echo "latest_tag {{ latest_tag.stdout }}" >> /var/lib/awx/.tower_versiona
+    echo "latest_tag '{{ latest_tag }}'" >> /var/lib/awx/.tower_versiona

@@ -2,6 +2,7 @@
 hostname: tower.example.net
 awx_branch: 9.0
 awx_path:  /srv/ansible/awx
+awx_selinux: false  ## As of 2.9.1 there are bugs in semanage and seports.
 
 admin:
   user: admin
@@ -17,14 +18,16 @@ nginx:
   key_name: privkey.pem
   user: nginx
   group: nginx
+  default_ssl: True  ## install a http->https default server template
 
 certbot:
+  ## if this is defined, it will create a test cert
+  #test: True
   hostname: tower.example.net
   pyvenv: /usr/local/certbot
   aws_access_key_id: XXXXXXXXXXXXXXXXXX
   aws_secret_access_key: YYYYYYYYYYYYYYYYYYY
   acme_email: user@example.net
-  #tert: True    ## if this is defined, it will test.
   aliases:
     - alias.example.net
 
@@ -42,12 +45,14 @@ admin_users:
   - eis
 
 awx_packages:
+  - krb5-devel
   - libcurl-devel
   - libffi-devel
   - libpq-devel
   - libtool-ltdl-devel
   - libxslt-devel
   - memcached
+  - npm
   - openldap-devel
   - postgresql
   - postgresql-plpython3

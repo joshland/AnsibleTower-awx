@@ -17,24 +17,6 @@
     group: "{{ awx_user['group'] }}"
     setype: system_conf_t
 
-- name: AWX Tower Settings
-  template:
-    src: settings.py.dist
-    dest: /etc/tower/settings.py
-    mode: '0644'
-    owner: root
-    group: root
-    setype: system_conf_t
-
-- name: AWX Service Environment
-  template:
-    src: awx-environment.j2
-    dest: /etc/sysconfig/awx
-    mode: '0644'
-    owner: root
-    group: root
-    setype: system_conf_t
-
 - name: Services Schedule for startup / Start
   systemd:
     state:   started
