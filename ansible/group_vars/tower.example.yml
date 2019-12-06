@@ -7,12 +7,13 @@ admin:
   user: admin
   email: admin@example.net
 
-web:
+nginx:
   ### ClearLinux
   #configpath: /usr/share/nginx/conf
   ### Fedora
+  hostname: tower.example.net
   configpath: /etc/nginx
-  certificate_name: fullchain.pem
+  cert_name: fullchain.pem
   key_name: privkey.pem
   user: nginx
   group: nginx

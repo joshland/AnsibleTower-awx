@@ -4,58 +4,59 @@
 
 - name: ensure nginx dir config
   file:
-    path:  "{{ web['configpath'] }}"
+    path:  "{{ nginx['configpath'] }}"
     state: directory
     mode:  '0755'
-    owner: "{{ web['user'] }}"
-    group: "{{ web['group'] }}"
+    owner: "{{ nginx['user'] }}"
+    group: "{{ nginx['group'] }}"
 
 - name: ensure nginx dir config
   file:
-    path: "{{ web['configpath'] }}/conf.d"
+    path: "{{ nginx['configpath'] }}/conf.d"
     state: directory
     mode: "0755"
-    owner: "{{ web['user'] }}"
-    group: "{{ web['group'] }}"
+    owner: "{{ nginx['user'] }}"
+    group: "{{ nginx['group'] }}"
 
 - name: nginx ssl config deployment
   template:
     src: ssl.conf
-    dest: "{{ web['configpath'] }}/ssl.conf"
-    owner: "{{ web['user'] }}"
-    group: "{{ web['group'] }}"
+    dest: "{{ nginx['configpath'] }}/ssl.conf"
+    owner: "{{ nginx['user'] }}"
+    group: "{{ nginx['group'] }}"
   notify: restart nginx
 
 - name: nginx mattermost config
   template:
     src: default.conf
-    dest: "{{ web['configpath'] }}/conf.d/default.conf"
-    owner: "{{ web['user'] }}"
-    group: "{{ web['group'] }}"
+    dest: "{{ nginx['configpath'] }}/conf.d/default.conf"
+    owner: "{{ nginx['user'] }}"
+    group: "{{ nginx['group'] }}"
   notify: restart nginx
 
-- name: nginx default http->https redirect
-  template:
-    src: http_conf.conf
-    dest: "{{ web['configpath'] }}/conf.d/default_https.conf"
-    owner: "{{ web['user'] }}"
-    group: "{{ web['group'] }}"
-  notify: restart nginx
+# - name: nginx default http->https redirect
+#   template:
+#     src: http_conf.conf
+#     dest: "{{ nginx['configpath'] }}/conf.d/default_https.conf"
+#     owner: "{{ nginx['user'] }}"
+#     group: "{{ nginx['group'] }}"
+#   notify: restart nginx
 
-- name: nginx mattermost config
-  template:
-    src: nginx.conf
-    dest: "{{ web['configpath'] }}/nginx.conf"
-    owner: "{{ web['user'] }}"
-    group: "{{ web['group'] }}"
-  notify: restart nginx
+## removed for this portion, TODO: strike?
+# - name: nginx mattermost config
+#   template:
+#     src: nginx.conf
+#     dest: "{{ nginx['configpath'] }}/nginx.conf"
+#     owner: "{{ nginx['user'] }}"
+#     group: "{{ nginx['group'] }}"
+#   notify: restart nginx
 
 - name: gather certificates
-  shell: python -c "import os; print(os.path.realpath('/etc/letsencrypt/live/{{ fqdn }}/{{ key_name }}'))"
+  shell: python -c "import os; print(os.path.realpath('/etc/letsencrypt/live/{{ nginx.hostname }}/{{ nginx.cert_name }}'))"
   register: key_path
 
 - name: gather certificates
-  shell: python -c "import os; print(os.path.realpath('/etc/letsencrypt/live/{{ fqdn }}/{{ certificate_name }}'))"
+  shell: python -c "import os; print(os.path.realpath('/etc/letsencrypt/live/{{ nginx.hostname }}/{{ nginx.key_name }}'))"
   register: cert_path
 
 - name: cert_path Status
@@ -70,48 +71,48 @@
 - name: ssl cert acl - live
   acl:
     path: /etc/letsencrypt/live
-    entry: "user:httpd:r-x"
+    entry: "user:{{ nginx.user }}:r-x"
     state: present
 
 - name: ssl cert acl - fqdn
   acl:
-    path: /etc/letsencrypt/live/{{ fqdn }}
-    entry: "user:httpd:r-x"
+    path: /etc/letsencrypt/live/{{ nginx.hostname }}
+    entry: "user:{{ nginx.user }}:r-x"
     state: present
 
 - name: ssl cert acl - live cert
   acl:
-    path: "/etc/letsencrypt/live/{{ fqdn }}/{{ certificate_name }}"
-    entry: "user:httpd:r--"
+    path: "/etc/letsencrypt/live/{{ nginx.hostname }}/{{ nginx.cert_name }}"
+    entry: "user:{{ nginx.user }}:r--"
     state: present
 
 - name: ssl cert acl - live key
   acl:
-    path: "/etc/letsencrypt/live/{{ fqdn }}/{{ key_name }}"
-    entry: "user:httpd:r--"
+    path: "/etc/letsencrypt/live/{{ nginx.hostname }}/{{ nginx.key_name }}"
+    entry: "user:{{ nginx.user }}:r--"
     state: present
 
 #### Actual Archive
 - name: ssl cert acl - live
   acl:
     path: /etc/letsencrypt/archive
-    entry: "user:httpd:r-x"
+    entry: "user:{{ nginx.user }}:r-x"
     state: present
 
 - name: ssl cert acl - fqdn
   acl:
-    path: /etc/letsencrypt/archive/{{ fqdn }}
-    entry: "user:httpd:r-x"
+    path: /etc/letsencrypt/archive/{{ nginx.hostname }}
+    entry: "user:{{ nginx.user }}:r-x"
     state: present
 
 - name: ssl cert acl - archive cert
   acl:
     path: "{{ cert_path.stdout }}"
-    entry: "user:httpd:r--"
+    entry: "user:{{ nginx.user }}:r--"
     state: present
 
 - name: ssl cert acl - archive key
   acl:
     path: "{{ key_path.stdout }}"
-    entry: "user:httpd:r--"
+    entry: "user:{{ nginx.user }}:r--"
     state: present
