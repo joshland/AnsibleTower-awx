@@ -12,7 +12,7 @@ def get_uuid():
         return open('/etc/tower/NODE_UUID', 'rb').read().strip()
     return os.getenv("NODE_UUID", '00000000-0000-0000-0000-000000000000')
 
-HOSTNAME = {{ hostname }}
+HOSTNAME = platform.node()
 
 ADMINS = ()
 
