@@ -101,6 +101,7 @@
     source /srv/ansible/bin/activate
     export TMP="{{ awx_user.home }}/tmp"
     export TEMP="{{ awx_user.home }}/tmp"
+    export TMPDIR="{{ awx_user.home }}/tmp"
     export NPMTMP="{{ awx_user.home }}/tmp"
     NPM_PACKAGES="{{ awx_user.home }}/.npm-packages"
     mkdir -p "$NPM_PACKAGES"
@@ -108,8 +109,10 @@
     chown -R {{ awx_user.user }}:{{ awx_user.group }} .
     make sdist
     chown -R {{ awx_user.user }}:{{ awx_user.group }} .
-    chmod 755 dist/
-    chmod 644 dist/*
+    if [ -d dist ]; then
+      chmod 755 dist/
+      chmod 644 dist/*
+    fi
   args:
     chdir: "{{ awx_path }}"
   when: 1 != 0
