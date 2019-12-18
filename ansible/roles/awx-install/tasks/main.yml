@@ -32,7 +32,7 @@
     virtualenv: "{{ awx_user.home }}"
     chdir: "{{ awx_path }}"
     name: ansible
-  when: ('ansible' not in awx_venv.stdout_lines)
+  when: ( "ansible" not in awx_venv.stdout_lines )
 
 - name: Ensure nginx dir config
   file:
