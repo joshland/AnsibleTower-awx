@@ -38,6 +38,7 @@
         ls {{ venvpath }}/bin
     fi
   register: venv_check
+  when: 1 != 0
 
 - name: Create Virtual Environment
   shell: |
@@ -58,25 +59,26 @@
 - name: Upgrade PIP
   pip:
     name: pip
-    state: latest
+    extra_args: --upgrade
     virtualenv: "{{ venvpath }}"
+
 
 - name: Deploy Certbot
   pip:
     name: certbot
-    state: latest
+    extra_args: --upgrade
     virtualenv: "{{ venvpath }}"
 
 - name: Deploy Certbot / R53
   pip:
     name: certbot-route53
-    state: latest
+    extra_args: --upgrade
     virtualenv: "{{ venvpath }}"
 
 - name: Deploy Certbot / NGINX
   pip:
     name: certbot-nginx
-    state: latest
+    extra_args: --upgrade
     virtualenv: "{{ venvpath }}"
 
 - name: Cron Script
@@ -96,12 +98,14 @@
 - name: Test Execute Certbox
   shell: |
     set -o pipefail
-    echo 'Y' | {{ venvpath }}/bin/certbot -n --test-cert --dns-route53 --agree-tos -m {{ certbot['acme_email'] }} --dns-route53-propagation-seconds 30 -d {{ domains }} certonly
+    echo 'Y' | {{ venvpath }}/bin/certbot -n --test-cert --dns-route53 --agree-tos -m {{ certbot['acme_email'] }} \
+    --dns-route53-propagation-seconds 30 -d {{ domains }} certonly
   when: certbot.test is defined and certbot.test
 
 - name: Execute Certbox
   shell: |
     set -o pipefail
-    echo 'Y' | {{ venvpath }}/bin/certbot -n --dns-route53 --agree-tos -m {{ certbot['acme_email'] }} --dns-route53-propagation-seconds 30 -d {{ domains }} certonly
+    echo 'Y' | {{ venvpath }}/bin/certbot -n --dns-route53 --agree-tos -m {{ certbot['acme_email'] }} \
+    --dns-route53-propagation-seconds 30 -d {{ domains }} certonly
   when: (certbot.test is not defined) or
         (not certbot.test)

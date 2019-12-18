@@ -58,6 +58,7 @@
 
 - name: Apply new SELinux file context to filesystem
   command: restorecon -irv "{{ awx_user['home'] }}"
+  when: 1 != 0
 
 - name: Repo Ansible AWX
   template:

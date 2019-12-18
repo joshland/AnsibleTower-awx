@@ -70,10 +70,12 @@
 - name: gather certificates
   shell: python -c "import os; print(os.path.realpath('/etc/letsencrypt/live/{{ nginx.hostname }}/{{ nginx.cert_name }}'))"
   register: key_path
+  when: 1 != 0
 
 - name: gather certificates
   shell: python -c "import os; print(os.path.realpath('/etc/letsencrypt/live/{{ nginx.hostname }}/{{ nginx.key_name }}'))"
   register: cert_path
+  when: 1 != 0
 
 - name: cert_path Status
   debug:

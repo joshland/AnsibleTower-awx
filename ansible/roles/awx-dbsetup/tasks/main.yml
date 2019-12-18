@@ -22,12 +22,14 @@
     set -o pipefail
     su postgres -c "psql -c \"select usename from pg_catalog.pg_user where usename='{{ awx_user['user'] }}';\" "
   register: pguser_check
+  when: 1 != 0
 
 - name: pgDatabase - Check For Existnce
   shell: |
     set -o pipefail
     su postgres -c "psql -c \"SELECT datname FROM pg_database WHERE datname = 'awx' ;\" "
   register: pgdb_check
+  when: 1 != 0
 
 - name: pgUser Setup
   shell: |
