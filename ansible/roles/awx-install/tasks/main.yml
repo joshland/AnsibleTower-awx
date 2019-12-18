@@ -106,7 +106,7 @@
     mkdir -p "$NPM_PACKAGES"
     cd "{{ awx_path }}"
     chown -R {{ awx_user.user }}:{{ awx_user.group }} .
-    su {{ awx_user.user }} -c "make sdist"
+    make sdist
     chown -R {{ awx_user.user }}:{{ awx_user.group }} .
     chmod 755 dist/
     chmod 644 dist/*
