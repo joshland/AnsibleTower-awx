@@ -11,7 +11,11 @@
 - name: Check Tower Settings
   shell: |
     set -o pipefail
-    ls /etc/tower
+    if [ ! -d /etc/tower ]; then
+      echo ""
+    else
+      ls /etc/tower
+    fi
   args:
     chdir: "{{ awx_path }}"
   register: awx_etc_tower
