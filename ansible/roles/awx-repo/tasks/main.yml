@@ -21,7 +21,7 @@
   args:
     chdir: "{{ awx_path }}"
   register: latest_tag
-  when: latest_tag is not defined
+  when: latest_tag is undefined
 
 - name: Switch to Tagged Release
   git:

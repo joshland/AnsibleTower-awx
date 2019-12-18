@@ -6,7 +6,7 @@
   args:
     chdir: "{{ awx_path }}"
   register: awx_venv
-  when: awx_venv is not defined
+  when: awx_venv is undefined
 
 - name: Check Tower Settings
   shell: |
@@ -19,7 +19,7 @@
   args:
     chdir: "{{ awx_path }}"
   register: awx_etc_tower
-  when: awx_etc_tower is not defined
+  when: awx_etc_tower is undefined
 
 - name: Env - upgrade pip
   pip:
@@ -57,7 +57,7 @@
   args:
     chdir: "{{ awx_path }}"
   register: latest_tag
-  when: latest_tag is not defined
+  when: latest_tag is undefined
 
 - name: Locate Get Latest Tag
   shell: |
@@ -66,7 +66,7 @@
   args:
     chdir: "{{ awx_path }}"
   register: tag_version
-  when: tag_version is not defined
+  when: tag_version is undefined
 
 - name: Compile requirements (remove pip)
   shell: |
@@ -80,7 +80,7 @@
     echo "${TARGET}1.txt"
     echo "${TARGET}2.txt"
   register: requirements
-  when: requirements is not defined
+  when: requirements is undefined
 
 - name: Env - install requirements
   pip:
@@ -182,7 +182,7 @@
   args:
     chdir: "{{ awx_path }}"
   register: awx_user_password
-  when: awx_user_password is not defined
+  when: awx_user_password is undefined
 
 - name: Admin Cred Save
   template:
@@ -257,7 +257,7 @@
   args:
     chdir: "{{ awx_path }}"
   register: awx_db_users
-  when: awx_db_users is not defined
+  when: awx_db_users is undefined
 
 - name: App User Creation
   shell: |
@@ -303,7 +303,7 @@
   args:
     chdir: "{{ awx_path }}"
   register: awx_staticdeploy
-  when: awx_staticdeploy is not defined
+  when: awx_staticdeploy is undefined
 
 - name: /var/lib/awx ACLs
   file:

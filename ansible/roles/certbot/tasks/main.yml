@@ -86,14 +86,14 @@
     src: certbot-update.sh
     dest: /etc/cron.weekly/certbot-update.sh
     mode: '0750'
-  when: cerbot.nocron is not defined
+  when: cerbot.nocron is undefined
 
 - name: NGINX Restart Script
   template:
     src: nginx_restart.sh
     dest: "{{ venvpath }}/certbot-update.sh"
     mode: '0750'
-  when: cerbot.nocron is not defined
+  when: cerbot.nocron is undefined
 
 - name: Test Execute Certbox
   shell: |
@@ -107,5 +107,5 @@
     set -o pipefail
     echo 'Y' | {{ venvpath }}/bin/certbot -n --dns-route53 --agree-tos -m {{ certbot['acme_email'] }} \
     --dns-route53-propagation-seconds 30 -d {{ domains }} certonly
-  when: (certbot.test is not defined) or
+  when: (certbot.test is undefined) or
         (not certbot.test)
