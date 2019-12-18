@@ -9,8 +9,8 @@
   roles:
     - common
     - emacs_text
-    #- nginx
-    #- certbot
+    - nginx
+    - certbot
     - awx-base
     - awx-dbsetup
     - awx-repo
