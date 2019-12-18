@@ -6,7 +6,7 @@
   args:
     chdir: "{{ awx_path }}"
   register: awx_venv
-  when: awx_venv is undefined
+  when: 1 != 0
 
 - name: Check Tower Settings
   shell: |
@@ -19,7 +19,7 @@
   args:
     chdir: "{{ awx_path }}"
   register: awx_etc_tower
-  when: awx_etc_tower is undefined
+  when: 1 != 0
 
 - name: Env - upgrade pip
   pip:
@@ -57,7 +57,7 @@
   args:
     chdir: "{{ awx_path }}"
   register: latest_tag
-  when: latest_tag is undefined
+  when: 1 != 0
 
 - name: Locate Get Latest Tag
   shell: |
@@ -66,7 +66,7 @@
   args:
     chdir: "{{ awx_path }}"
   register: tag_version
-  when: tag_version is undefined
+  when: 1 != 0
 
 - name: Compile requirements (remove pip)
   shell: |
@@ -80,7 +80,7 @@
     echo "${TARGET}1.txt"
     echo "${TARGET}2.txt"
   register: requirements
-  when: requirements is undefined
+  when: 1 != 0
 
 - name: Env - install requirements
   pip:
@@ -182,7 +182,7 @@
   args:
     chdir: "{{ awx_path }}"
   register: awx_user_password
-  when: awx_user_password is undefined
+  when: 1 != 0
 
 - name: Admin Cred Save
   template:
